@@ -8,7 +8,7 @@ const AuthLayout = () => {
                 <img
                     src={LoginBg}
                     alt="bizDailyFlow"
-                    className="absolute inset-0 w-full h-full object-cover opacity-70"
+                    className="absolute inset-0 w-full h-full"
                 />
             </div>
             <div className="w-full md:w-1/2 bg-linear-to-br from-white via-white to-primaryLight px-6 sm:px-10 md:px-20 xl:px-36 py-16 flex flex-col justify-center relative">

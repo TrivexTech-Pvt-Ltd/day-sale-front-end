@@ -1,7 +1,9 @@
-import { LockIcon, Mail, Chrome, Facebook, Apple } from "lucide-react"
+import { LockIcon, Mail, Facebook, Apple } from "lucide-react"
 import Button from "../../components/ui/Button"
 import TextField from "../../components/ui/TextField"
 import { usePasswordToggle } from "../../hooks/common/usePasswordToggle";
+import { GoogleLogin } from '@react-oauth/google';
+import { APP_CONFIG } from "../../config";
 
 const LoginForm = () => {
     const { Icon, inputType, toggleVisibility } = usePasswordToggle();
@@ -42,13 +44,26 @@ const LoginForm = () => {
 
             {/* Social Login Buttons */}
             <div className="space-y-3">
-                <button
+                {/* <button
                     type="button"
                     className="w-full flex items-center justify-center gap-3 px-5 py-2.5 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors duration-200 font-medium text-gray-700 text-sm shadow-sm hover:shadow"
                 >
                     <Chrome size={20} className="text-[#4285F4]" />
                     Continue with Google
-                </button>
+                </button> */}
+
+                <GoogleLogin
+                    onSuccess={(credentialResponse) => {
+                        const idToken = credentialResponse.credential;
+
+                        fetch(`${APP_CONFIG.API_BASE_URL}/auth/google-login`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ idToken })
+                        });
+                    }}
+                    onError={() => console.log('Login Failed')}
+                />
 
                 <button
                     type="button"

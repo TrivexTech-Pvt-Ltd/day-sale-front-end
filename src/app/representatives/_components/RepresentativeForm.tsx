@@ -7,6 +7,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { toast } from 'sonner';
+import { Representative } from '@prisma/client';
 
 const formSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -16,35 +18,50 @@ const formSchema = z.object({
 
 type RepresentativeFormValues = z.infer<typeof formSchema>;
 
-const createRepresentative = async (data: RepresentativeFormValues) => {
-    const response = await fetch('/api/representatives', {
-        method: 'POST',
+interface RepresentativeFormProps {
+    onSuccess: () => void;
+    initialData?: Representative | null;
+}
+
+const saveRepresentative = async ({ data, id }: { data: RepresentativeFormValues; id?: string }) => {
+    const url = id ? `/api/representatives/${id}` : '/api/representatives';
+    const method = id ? 'PUT' : 'POST';
+
+    const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     });
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create representative');
+        throw new Error(errorData.error || 'Failed to save representative');
     }
     return response.json();
-}
+};
 
-export function RepresentativeForm({ onSuccess }: { onSuccess: () => void }) {
+export function RepresentativeForm({ onSuccess, initialData }: RepresentativeFormProps) {
     const queryClient = useQueryClient();
+    const isEditing = !!initialData;
+
     const form = useForm<RepresentativeFormValues>({
         resolver: zodResolver(formSchema),
-        defaultValues: { name: '', phone: '', area: '' },
+        defaultValues: {
+            name: initialData?.name || '',
+            phone: initialData?.phone || '',
+            area: initialData?.area || '',
+        },
     });
 
     const mutation = useMutation({
-        mutationFn: createRepresentative,
+        mutationFn: (data: RepresentativeFormValues) => saveRepresentative({ data, id: initialData?.id }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['representatives'] });
-            form.reset();
+            if (!isEditing) form.reset();
+            toast.success(isEditing ? 'Representative updated successfully' : 'Representative created successfully');
             onSuccess();
         },
-        onError: (error) => {
-            console.error('Error:', error.message);
+        onError: (error: any) => {
+            toast.error(error.message || 'Failed to save representative');
         },
     });
 
@@ -77,7 +94,7 @@ export function RepresentativeForm({ onSuccess }: { onSuccess: () => void }) {
                     </FormItem>
                 )} />
                 <Button type="submit" disabled={mutation.isPending} className="w-full">
-                    {mutation.isPending ? 'Saving...' : 'Save Representative'}
+                    {mutation.isPending ? 'Saving...' : isEditing ? 'Update Representative' : 'Save Representative'}
                 </Button>
             </form>
         </Form>

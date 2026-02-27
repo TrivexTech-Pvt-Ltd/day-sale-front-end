@@ -7,8 +7,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { toast } from 'sonner';
+import { Customer } from '@prisma/client';
 
-// Zod schema for client-side validation
 const formSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
     phone: z.string().optional(),
@@ -18,36 +19,51 @@ const formSchema = z.object({
 
 type CustomerFormValues = z.infer<typeof formSchema>;
 
-// API call function
-const createCustomer = async (data: CustomerFormValues) => {
-    const response = await fetch('/api/customers', {
-        method: 'POST',
+interface CustomerFormProps {
+    onSuccess: () => void;
+    initialData?: Customer | null;
+}
+
+const saveCustomer = async ({ data, id }: { data: CustomerFormValues; id?: string }) => {
+    const url = id ? `/api/customers/${id}` : '/api/customers';
+    const method = id ? 'PUT' : 'POST';
+
+    const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     });
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create customer');
+        throw new Error(errorData.error || 'Failed to save customer');
     }
     return response.json();
-}
+};
 
-export function CustomerForm({ onSuccess }: { onSuccess: () => void }) {
+export function CustomerForm({ onSuccess, initialData }: CustomerFormProps) {
     const queryClient = useQueryClient();
+    const isEditing = !!initialData;
+
     const form = useForm<CustomerFormValues>({
         resolver: zodResolver(formSchema),
-        defaultValues: { name: '', phone: '', email: '', address: '' },
+        defaultValues: {
+            name: initialData?.name || '',
+            phone: initialData?.phone || '',
+            email: initialData?.email || '',
+            address: initialData?.address || '',
+        },
     });
 
     const mutation = useMutation({
-        mutationFn: createCustomer,
+        mutationFn: (data: CustomerFormValues) => saveCustomer({ data, id: initialData?.id }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['customers'] });
-            form.reset();
+            if (!isEditing) form.reset();
+            toast.success(isEditing ? 'Customer updated successfully' : 'Customer created successfully');
             onSuccess();
         },
-        onError: (error) => {
-            console.error('Error:', error.message);
+        onError: (error: any) => {
+            toast.error(error.message || 'Failed to save customer');
         },
     });
 
@@ -87,7 +103,7 @@ export function CustomerForm({ onSuccess }: { onSuccess: () => void }) {
                     </FormItem>
                 )} />
                 <Button type="submit" disabled={mutation.isPending} className="w-full">
-                    {mutation.isPending ? 'Saving...' : 'Save Customer'}
+                    {mutation.isPending ? 'Saving...' : isEditing ? 'Update Customer' : 'Save Customer'}
                 </Button>
             </form>
         </Form>

@@ -1,0 +1,1 @@
+﻿src/app/api/cron/daily-report/route.ts(41,26): error TS2353: Object literal may only specify known properties, and 'shopId_reportDate' does not exist in type 'DailyReportWhereUniqueInput'.

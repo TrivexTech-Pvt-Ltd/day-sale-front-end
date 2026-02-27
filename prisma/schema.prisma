@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+// --- ENUMS ---
+enum Role {
+  ADMIN
+  CASHIER
+  REP
+}
+
+enum CustomerType {
+  RETAIL
+  WHOLESALE
+}
+
+enum StockTransactionType {
+  IN // Purchase or opening stock
+  OUT // Sale
+  ADJUSTMENT
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  QR
+  CREDIT
+}
+
+// --- MASTER TABLES ---
+model Shop {
+  id               String        @id @default(cuid())
+  name             String
+  currency         String        @default("USD")
+  timeZone         String        @default("UTC")
+  reportCutoffTime String        @default("23:59")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  users            User[]
+  customers        Customer[]
+  products         Product[]
+  sales            Sale[]
+  representatives  Representative[]
+  dailyReports     DailyReport[]
+  categories       ProductCategory[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  shopId       String
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(CASHIER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+}
+
+model Customer {
+  id           String       @id @default(cuid())
+  shopId       String
+  createdByUserId String?
+  name         String
+  phone        String?
+  email        String?
+  address      String?
+  imageUrl     String?
+  notes        String?
+  customerType CustomerType @default(RETAIL)
+  creditLimit  Float?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  shop         Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  sales        Sale[]
+
+  @@index([shopId])
+  @@index([name])
+  @@index([createdByUserId])
+}
+
+model Representative {
+  id              String   @id @default(cuid())
+  shopId          String
+  createdByUserId String?
+  name            String
+  phone           String?
+  area            String?
+  imageUrl        String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  sales           Sale[]
+
+  @@index([shopId])
+  @@index([createdByUserId])
+}
+
+// --- PRODUCTS + INVENTORY ---
+model Product {
+  id                String             @id @default(cuid())
+  shopId            String
+  createdByUserId   String?
+  name              String
+  sku               String?
+  costPrice         Float?
+  sellPrice         Float
+  imageUrl          String?
+  reorderLevel      Int?
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  shop              Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  stockTransactions StockTransaction[]
+  saleItems         SaleItem[]
+  categoryId        String?
+  category          ProductCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@unique([shopId, sku])
+  @@index([shopId])
+  @@index([createdByUserId])
+}
+
+model ProductCategory {
+  id              String    @id @default(cuid())
+  name            String
+  shopId          String
+  createdByUserId String?
+  shop            Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  products        Product[]
+
+  @@unique([shopId, name])
+  @@index([createdByUserId])
+}
+
+model StockTransaction {
+  id        String               @id @default(cuid())
+  productId String
+  type      StockTransactionType
+  qty       Int // Negative for OUT/SALE, Positive for IN
+  unitCost  Float?
+  refType   String? // "SALE", "PURCHASE", "ADJUST"
+  refId     String? // e.g., Sale ID or Purchase Order ID
+  createdAt DateTime             @default(now())
+  product   Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+// --- SALES ---
+model Sale {
+  id             String         @id @default(cuid())
+  shopId         String
+  invoiceNo      String
+  saleDateTime   DateTime       @default(now())
+  subTotal       Float
+  discount       Float          @default(0)
+  total          Float
+  paymentMethod  PaymentMethod
+  notes          String?
+  createdByUserId String
+  shop           Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customerId     String?
+  customer       Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  repId          String?
+  representative Representative?@relation(fields: [repId], references: [id], onDelete: SetNull)
+  items          SaleItem[]
+
+  @@unique([shopId, invoiceNo])
+  @@index([shopId, saleDateTime])
+  @@index([customerId])
+}
+
+model SaleItem {
+  id        String  @id @default(cuid())
+  saleId    String
+  productId String
+  qty       Int
+  unitPrice Float
+  lineTotal Float
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+}
+
+// --- REPORTS ---
+model DailyReport {
+  id            String   @id @default(cuid())
+  shopId        String
+  userId        String?
+  reportDate    DateTime @db.Date
+  totalSales    Float
+  totalInvoices Int
+  cashTotal     Float
+  cardTotal     Float
+  qrTotal       Float
+  creditTotal   Float
+  createdAt     DateTime @default(now())
+  shop          Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, userId, reportDate], name: "shopId_userId_reportDate")
+}

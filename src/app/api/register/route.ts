@@ -3,6 +3,8 @@ import prisma from '@/lib/prisma';
 import { z } from 'zod';
 import { hash } from 'bcryptjs';
 
+export const dynamic = 'force-dynamic';
+
 const registerSchema = z.object({
     shopName: z.string().min(1, 'Shop name is required'),
     adminName: z.string().min(1, 'Admin name is required'),

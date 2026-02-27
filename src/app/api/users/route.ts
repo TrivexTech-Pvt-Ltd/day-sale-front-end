@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { hash } from 'bcryptjs';
 import { Role } from '@prisma/client';
 
+export const dynamic = 'force-dynamic';
+
 const userSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     email: z.string().email('Invalid email address'),

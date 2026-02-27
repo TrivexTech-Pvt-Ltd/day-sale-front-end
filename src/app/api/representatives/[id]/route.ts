@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 
+export const dynamic = 'force-dynamic';
+
 const repUpdateSchema = z.object({
     name: z.string().min(1, 'Name is required').optional(),
     phone: z.string().optional(),

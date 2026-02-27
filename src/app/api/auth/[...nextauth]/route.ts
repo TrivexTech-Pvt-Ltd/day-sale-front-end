@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { compare } from "bcryptjs";
 import { Role } from "@prisma/client";
 
+export const dynamic = 'force-dynamic';
+
 export const authOptions: AuthOptions = {
     providers: [
         CredentialsProvider({

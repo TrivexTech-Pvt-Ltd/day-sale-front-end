@@ -5,6 +5,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { PaymentMethod, StockTransactionType, Prisma } from '@prisma/client';
 
+export const dynamic = 'force-dynamic';
+
 const saleItemSchema = z.object({
     productId: z.string(),
     qty: z.number().int().positive(),

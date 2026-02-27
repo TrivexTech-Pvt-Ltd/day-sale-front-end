@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { PaymentMethod } from '@prisma/client';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
     // Secure the endpoint - only Vercel Cron should be able to run this
     const authHeader = request.headers.get('authorization');
